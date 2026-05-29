@@ -117,10 +117,17 @@ Return your response strictly in the following JSON format:
 
     const data = await response.json();
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) {
+      throw new Error('Gemini API returned an empty response.');
+    }
     const cleanJson = JSON.parse(rawText.trim());
+    const parsedScore = parseInt(cleanJson.score, 10);
+    if (isNaN(parsedScore)) {
+      throw new Error('Gemini API response did not contain a valid match score.');
+    }
 
     return {
-      score: parseInt(cleanJson.score || '0', 10),
+      score: parsedScore,
       matchedSkills: cleanJson.matchedSkills || [],
       isError: false
     };
@@ -345,13 +352,18 @@ export async function fetchJobsFromJSearch(config) {
 
   // Filter jobs by ATS score and dev role title
   const relevantJobs = evaluatedJobs.filter((job) => {
+    // If the ATS scoring failed due to any internal error, do NOT skip the job.
+    if (job.isError) {
+      return true;
+    }
+
     const titleLower = job.title.toLowerCase();
     const isDevRole = ['react', 'frontend', 'front-end', 'ui', 'software', 'developer', 'engineer', 'full-stack', 'fullstack'].some(
       (kw) => titleLower.includes(kw)
     );
     
-    // Pass if Gemini is missing, OR if the job score is >= 85%, OR if there was an evaluation error
-    const isHighlyRelevant = isGeminiMissing || job.isError || (job.atsScore >= 85);
+    // Pass if Gemini is missing, OR if the job score is >= 85%
+    const isHighlyRelevant = isGeminiMissing || (job.atsScore >= 85);
     return isDevRole && isHighlyRelevant;
   });
 
