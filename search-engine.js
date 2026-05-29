@@ -275,6 +275,18 @@ export async function fetchJobsFromJSearch(config) {
       continue;
     }
 
+    // Exclude jobs with explicitly stated low salaries (< 10 LPA)
+    const minSalaryVal = job.job_min_salary;
+    const isLowSalary = minSalaryVal && (
+      (job.job_salary_currency === 'INR' && minSalaryVal < 1000000) || // Less than 10 LPA
+      (job.job_salary_currency === 'USD' && minSalaryVal < 12000)      // Less than $12,000 / year (approx 10 LPA)
+    );
+
+    if (isLowSalary) {
+      console.log(`   [${i + 1}/${rawJobs.length}] Skipping: "${job.job_title}" (Salary below 10 LPA: ${job.job_min_salary} ${job.job_salary_currency})`);
+      continue;
+    }
+
     let salaryRange = 'Not specified';
     if (job.job_min_salary && job.job_max_salary) {
       const minLpa = (job.job_min_salary / 100000).toFixed(1);
@@ -322,9 +334,7 @@ export async function fetchJobsFromJSearch(config) {
     });
   }
 
-  // Filter jobs:
-  // If Gemini is missing, we send ALL jobs matching basic developer title check (do not filter out anything based on score)
-  // If Gemini is present, we filter strictly for score >= 85%
+  // Filter jobs by ATS score and dev role title
   const relevantJobs = evaluatedJobs.filter((job) => {
     const titleLower = job.title.toLowerCase();
     const isDevRole = ['react', 'frontend', 'front-end', 'ui', 'software', 'developer', 'engineer', 'full-stack', 'fullstack'].some(
