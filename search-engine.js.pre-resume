@@ -7,13 +7,13 @@
  *  using Google Gemini API (free tier), and filters
  *  for jobs with a match score > 85%.
  * ============================================
- */
+ *  */
 
 import fs from 'fs';
 import path from 'path';
 
-// Default Candidate Resume Context for the AI ATS to evaluate against
-const DEFAULT_RESUME_CONTEXT = `
+// Full Candidate Resume Context for the AI ATS to evaluate against
+const RESUME_CONTEXT = `
 Candidate Name: Vishwa Gaurav Shukla
 Target Roles: Frontend Developer, React Developer, Software Developer, Full-Stack Developer, UI Engineer
 Experience: 2+ years of experience (Trainee -> Associate -> Developer at 98thPercentile)
@@ -26,11 +26,6 @@ Key Achievements:
 4. Built reusable UI component library cutting maintenance time 35%
 5. Built multi-portal dashboards (CMS, Admin, Student, Teacher, Parent, Operations) with real-time APIs
 `;
-
-// Use resume context from environment variable if configured, otherwise fall back to default
-const getResumeContext = () => {
-  return process.env.RESUME_CONTEXT || DEFAULT_RESUME_CONTEXT;
-};
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -55,7 +50,7 @@ Calculate an honest match score from 0 to 100 based on core skills, target exper
 Identify which core skills from the candidate's resume are explicitly required in the job description.
 
 Candidate Resume Context:
-${getResumeContext()}
+${RESUME_CONTEXT}
 
 Job Opening:
 Title: ${title}
@@ -228,10 +223,6 @@ function filterDuplicatesAndHistory(jobs) {
  * @returns {Promise<object[]>} Array of formatted job objects
  */
 export async function fetchJobsFromJSearch(config) {
-  const resume = getResumeContext();
-  const resumeSnippet = resume.trim().substring(0, 80).replace(/\n/g, ' ');
-  console.log(`📄 Resume Context Loaded: "${resumeSnippet}..."`);
-
   const apiKey = config.rapidApiKey;
   if (!apiKey || apiKey === 'your_rapidapi_key_here') {
     throw new Error('RAPIDAPI_KEY is not configured or is using the placeholder value.');
