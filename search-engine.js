@@ -160,15 +160,11 @@ function calculateATSScoreFallback(title, description) {
 /**
  * Helper to check and maintain the list of historically sent job IDs.
  * Prevents sending duplicate job notifications.
- * 
- * @param {string[]} currentIds - Job IDs from the current scan
- * @returns {string[]} Filtered list of new Job IDs
  */
 function filterDuplicatesAndHistory(jobs) {
   const historyFile = path.resolve('history.json');
   let sentHistory = [];
 
-  // Load sent history if it exists
   if (fs.existsSync(historyFile)) {
     try {
       sentHistory = JSON.parse(fs.readFileSync(historyFile, 'utf-8'));
@@ -177,19 +173,16 @@ function filterDuplicatesAndHistory(jobs) {
     }
   }
 
-  // Deduplicate within the same run using title + company
   const seenKeys = new Set();
   const uniqueJobs = [];
 
   for (const job of jobs) {
     const uniqueKey = `${job.title.toLowerCase().trim()}_${job.company.toLowerCase().trim()}`;
     
-    // Check 1: Has this job been seen in this current run?
     if (seenKeys.has(uniqueKey)) {
       continue; 
     }
 
-    // Check 2: Has this job been sent in a previous day's run?
     if (sentHistory.includes(job.id) || sentHistory.includes(uniqueKey)) {
       continue;
     }
@@ -198,7 +191,6 @@ function filterDuplicatesAndHistory(jobs) {
     uniqueJobs.push(job);
   }
 
-  // Save new jobs to history (capped at last 500 items)
   if (uniqueJobs.length > 0) {
     const newKeys = uniqueJobs.map(j => `${j.title.toLowerCase().trim()}_${j.company.toLowerCase().trim()}`);
     const newIds = uniqueJobs.map(j => j.id);
@@ -213,13 +205,15 @@ function filterDuplicatesAndHistory(jobs) {
 /**
  * Fetch jobs dynamically from JSearch API and run ATS filter.
  * @param {object} config - Configuration object
- * @returns {Promise<object[]>} Array of formatted job objects matching ATS score > 85
+ * @returns {Promise<object[]>} Array of formatted job objects
  */
 export async function fetchJobsFromJSearch(config) {
   const apiKey = config.rapidApiKey;
   if (!apiKey || apiKey === 'your_rapidapi_key_here') {
     throw new Error('RAPIDAPI_KEY is not configured or is using the placeholder value.');
   }
+
+  const isGeminiMissing = !config.geminiApiKey || config.geminiApiKey === 'your_gemini_api_key_here';
 
   const rolesQuery = `(${config.targetRoles.join(' OR ')})`;
   const citiesQuery = `(${config.targetCities.join(' OR ')})`;
@@ -249,7 +243,7 @@ export async function fetchJobsFromJSearch(config) {
   const result = await response.json();
   const rawJobs = result.data || [];
 
-  console.log(`   API returned ${rawJobs.length} raw jobs. Running Gemini ATS parser...`);
+  console.log(`   API returned ${rawJobs.length} raw jobs. Running ATS scoring...`);
 
   // Sequential execution with a 1.2-second delay to guarantee we never hit the 15 RPM free tier rate limit
   const evaluatedJobs = [];
@@ -295,7 +289,8 @@ export async function fetchJobsFromJSearch(config) {
       .filter(Boolean)
       .join(', ');
 
-    if (i > 0) {
+    // Only delay if we are actually making network calls to Gemini API
+    if (!isGeminiMissing && i > 0) {
       await delay(1200);
     }
 
@@ -327,14 +322,16 @@ export async function fetchJobsFromJSearch(config) {
     });
   }
 
-  // Filter jobs by ATS Score
+  // Filter jobs:
+  // If Gemini is missing, we send ALL jobs matching basic developer title check (do not filter out anything based on score)
+  // If Gemini is present, we filter strictly for score >= 85%
   const relevantJobs = evaluatedJobs.filter((job) => {
     const titleLower = job.title.toLowerCase();
     const isDevRole = ['react', 'frontend', 'front-end', 'ui', 'software', 'developer', 'engineer', 'full-stack', 'fullstack'].some(
       (kw) => titleLower.includes(kw)
     );
     
-    const isHighlyRelevant = job.atsScore >= 85;
+    const isHighlyRelevant = isGeminiMissing ? true : (job.atsScore >= 85);
     return isDevRole && isHighlyRelevant;
   });
 

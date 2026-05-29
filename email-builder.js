@@ -24,11 +24,25 @@ export function buildEmailHTML(jobs, config) {
     day: 'numeric',
   });
 
+  const isGeminiMissing = !config.geminiApiKey || config.geminiApiKey === 'your_gemini_api_key_here';
+
+  // Warning Banner if Gemini API Key is missing
+  const warningBanner = isGeminiMissing
+    ? `
+      <div style="background:#fff3e0;border:1px solid #ffe0b2;border-radius:12px;padding:16px;margin-bottom:24px;color:#e65100;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;line-height:1.5;box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+        <strong style="font-size:14px;display:block;margin-bottom:4px;">⚠️ Gemini API Key Missing</strong>
+        The Google Gemini API Key is not configured in your environment. The agent has bypassed the strict 85% ATS match filter and sent **all matching full-time developer jobs** found today using a basic local keyword parser instead of AI evaluation. 
+        <br><br>
+        To enable semantic AI ATS matching and filter out low-match roles, configure <code>GEMINI_API_KEY</code>.
+      </div>
+    `
+    : '';
+
   const jobCards = jobs.length > 0 
     ? jobs.map((job, i) => buildJobCard(job, i + 1)).join('')
     : `
       <div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:30px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-        <p style="margin:0;color:#666;font-size:16px;font-weight:500;">📭 No new jobs matching the > 85% ATS threshold were found today.</p>
+        <p style="margin:0;color:#666;font-size:16px;font-weight:500;">📭 No new jobs matching the filter criteria were found today.</p>
         <p style="margin:8px 0 0;color:#888;font-size:13px;">This occasionally happens on weekends or holidays. We'll scan again tomorrow!</p>
       </div>
     `;
@@ -55,20 +69,23 @@ export function buildEmailHTML(jobs, config) {
         <h1 style="margin:0 0 8px;color:#fff;font-size:24px;font-weight:700;">🎯 Daily Job Hunt Report</h1>
         <p style="margin:0;color:rgba(255,255,255,0.85);font-size:14px;">${date}</p>
         <p style="margin:8px 0 0;color:rgba(255,255,255,0.7);font-size:12px;">
-          Cities: ${config.targetCities.join(' · ')} | ATS Filter: &ge; 85% Match | Exp: 2+ yrs
+          Cities: ${config.targetCities.join(' · ')} | ATS Filter: ${isGeminiMissing ? 'Disabled' : '&ge; 85% Match'} | Exp: 2+ yrs
         </p>
       </div>
+
+      <!-- WARNING BANNER -->
+      ${warningBanner}
 
       <!-- SUMMARY -->
       <div style="background:#fff;border-radius:12px;padding:16px 20px;margin-bottom:24px;border:1px solid #e0e0e0;">
         <p style="margin:0;color:#333;font-size:14px;">
           <strong>📊 Today's scan:</strong> Found <strong>${jobs.length}</strong> new job postings in the last 24 hours across
-          <strong>${config.targetCities.join(', ')}</strong> matching your profile at <strong>&ge; 85% relevance</strong>.
+          <strong>${config.targetCities.join(', ')}</strong>.
         </p>
       </div>
 
       <!-- COMPANY LISTINGS -->
-      <h2 style="color:#1a1a1a;font-size:18px;margin-bottom:16px;">🔥 High-Match Opportunities (&ge; 85% ATS Score)</h2>
+      <h2 style="color:#1a1a1a;font-size:18px;margin-bottom:16px;">🔥 High-Match Opportunities</h2>
       ${jobCards}
 
       <!-- JOB PORTAL SOURCES -->
@@ -154,7 +171,7 @@ export async function sendEmail(transporter, html, config) {
   const mailOptions = {
     from: `"Job Hunter Agent 🎯" <${config.emailUser}>`,
     to: config.emailTo,
-    subject: `🔥 Daily Job Report — ${date} | ATS Filtered &ge; 85%`,
+    subject: `🔥 Daily Job Report — ${date} | ATS Filtered`,
     html: html,
   };
 
