@@ -1,0 +1,124 @@
+/**
+ * ============================================
+ *  DAILY JOB HUNTER — MAIN ENTRY POINT
+ * ============================================
+ *  Orchestrates the job search pipeline:
+ *  1. Load config from .env
+ *  2. Filter companies by target criteria
+ *  3. Build HTML email
+ *  4. Send via Gmail
+ * ============================================
+ */
+
+import dotenv from 'dotenv';
+import { filterCompaniesByCities, TARGET_COMPANIES } from './search-engine.js';
+import { buildEmailHTML, createTransport, sendEmail } from './email-builder.js';
+
+// Load environment variables
+dotenv.config();
+
+/**
+ * Load and validate configuration from environment.
+ * @returns {object} Validated config
+ */
+function loadConfig() {
+  const config = {
+    emailUser: process.env.EMAIL_USER,
+    emailPass: process.env.EMAIL_PASS,
+    emailTo: process.env.EMAIL_TO || process.env.EMAIL_USER,
+    targetCities: (process.env.TARGET_CITIES || 'Hyderabad,Bangalore,Pune').split(',').map((s) => s.trim()),
+    targetRoles: (process.env.TARGET_ROLES || 'Frontend Developer,React Developer').split(',').map((s) => s.trim()),
+    coreSkills: (process.env.CORE_SKILLS || 'React,Redux,JavaScript').split(',').map((s) => s.trim()),
+    minSalary: parseInt(process.env.MIN_SALARY_LPA || '10', 10),
+    maxSalary: parseInt(process.env.MAX_SALARY_LPA || '20', 10),
+    experienceYears: parseInt(process.env.EXPERIENCE_YEARS || '2', 10),
+    cronSchedule: process.env.CRON_SCHEDULE || '0 9 * * *',
+  };
+
+  // Validation
+  if (!config.emailUser || !config.emailPass) {
+    console.error('❌ ERROR: EMAIL_USER and EMAIL_PASS are required in .env');
+    console.error('   Copy .env.example to .env and fill in your Gmail App Password.');
+    console.error('   See: https://myaccount.google.com/apppasswords');
+    process.exit(1);
+  }
+
+  return config;
+}
+
+/**
+ * Run the complete job hunt pipeline.
+ * @param {object} [overrideConfig] - Optional config override (for testing)
+ */
+export async function runJobHunt(overrideConfig) {
+  const config = overrideConfig || loadConfig();
+  const isTest = process.argv.includes('--test');
+
+  console.log('');
+  console.log('╔══════════════════════════════════════════╗');
+  console.log('║     🎯 DAILY JOB HUNTER AGENT v1.0      ║');
+  console.log('╚══════════════════════════════════════════╝');
+  console.log('');
+  console.log(`📅 Date: ${new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`);
+  console.log(`🏙️  Cities: ${config.targetCities.join(', ')}`);
+  console.log(`💼 Roles: ${config.targetRoles.join(', ')}`);
+  console.log(`💰 Salary: ₹${config.minSalary}–${config.maxSalary} LPA`);
+  console.log(`📊 Experience: ${config.experienceYears}+ years`);
+  console.log('');
+
+  // Step 1: Filter companies
+  console.log('🔍 Step 1: Scanning target companies...');
+  const matchingCompanies = filterCompaniesByCities(config.targetCities);
+  console.log(`   Found ${matchingCompanies.length}/${TARGET_COMPANIES.length} companies in target cities.`);
+
+  // Step 2: Sort by relevance (interview rounds ascending, then alphabetically)
+  const sorted = [...matchingCompanies].sort((a, b) => {
+    if (a.interviewRounds !== b.interviewRounds) return a.interviewRounds - b.interviewRounds;
+    return a.name.localeCompare(b.name);
+  });
+  console.log('   Sorted by interview speed → fastest processes first.');
+
+  // Step 3: Build email
+  console.log('📧 Step 2: Building email report...');
+  const html = buildEmailHTML(sorted, config);
+  console.log('   HTML email built successfully.');
+
+  // Step 4: Send email
+  if (isTest && (!config.emailUser || config.emailPass === 'your_gmail_app_password_here')) {
+    console.log('');
+    console.log('⚠️  TEST MODE: Skipping email send (no valid credentials).');
+    console.log('   To send a real email, configure .env with your Gmail App Password.');
+    console.log('');
+    console.log('📋 Companies that would be included:');
+    sorted.forEach((c, i) => {
+      console.log(`   ${i + 1}. ${c.name} (${c.locations.join(', ')}) — ${c.salaryRange}`);
+    });
+  } else {
+    console.log('📨 Step 3: Sending email...');
+    try {
+      const transporter = createTransport(config);
+      await sendEmail(transporter, html, config);
+      console.log(`   ✅ Email sent to: ${config.emailTo}`);
+    } catch (error) {
+      console.error(`   ❌ Failed to send email: ${error.message}`);
+      if (error.message.includes('Invalid login')) {
+        console.error('   💡 Make sure you are using a Gmail App Password, NOT your regular password.');
+        console.error('   📎 Generate one at: https://myaccount.google.com/apppasswords');
+      }
+      throw error;
+    }
+  }
+
+  console.log('');
+  console.log('✅ Job hunt complete!');
+  console.log(`📊 ${sorted.length} opportunities reported.`);
+  console.log('');
+
+  return { companies: sorted, config };
+}
+
+// Run if called directly
+runJobHunt().catch((err) => {
+  console.error('Fatal error:', err.message);
+  process.exit(1);
+});

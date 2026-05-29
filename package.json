@@ -1,0 +1,19 @@
+{
+  "name": "daily-job-hunter",
+  "version": "1.0.0",
+  "description": "Daily job hunter agent that finds React/Frontend developer jobs in India and sends them via email",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node index.js --test",
+    "schedule": "node scheduler.js"
+  },
+  "dependencies": {
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.16",
+    "dotenv": "^16.4.7"
+  },
+  "author": "Vishwa Gaurav Shukla",
+  "license": "MIT"
+}

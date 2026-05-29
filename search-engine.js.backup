@@ -1,0 +1,318 @@
+/**
+ * ============================================
+ *  JOB SEARCH ENGINE
+ * ============================================
+ *  Fetches job listings from multiple sources
+ *  (career pages, APIs, RSS feeds) and filters
+ *  them based on candidate criteria.
+ * ============================================
+ */
+
+/**
+ * Target companies with their career page URLs and metadata.
+ * These are curated product companies / well-funded startups
+ * known for strong engineering culture in India.
+ */
+export const TARGET_COMPANIES = [
+  // === FINTECH ===
+  {
+    name: 'Razorpay',
+    category: 'Fintech',
+    careersUrl: 'https://razorpay.com/jobs/',
+    linkedinUrl: 'https://www.linkedin.com/company/razorpay/jobs/',
+    locations: ['Bangalore'],
+    salaryRange: '₹14–22 LPA',
+    interviewRounds: 3,
+    description: "India's leading payments infrastructure company. Engineering-first culture.",
+    searchKeywords: ['frontend', 'react', 'software engineer', 'UI'],
+  },
+  {
+    name: 'CRED',
+    category: 'Fintech',
+    careersUrl: 'https://cred.club/careers',
+    linkedinUrl: 'https://www.linkedin.com/company/cred-club/jobs/',
+    locations: ['Bangalore'],
+    salaryRange: '₹15–25 LPA',
+    interviewRounds: 3,
+    description: 'Premium fintech with obsessive design quality. Top-tier engineering team.',
+    searchKeywords: ['frontend', 'react', 'developer', 'engineer'],
+  },
+  {
+    name: 'Groww',
+    category: 'Fintech',
+    careersUrl: 'https://groww.in/careers',
+    linkedinUrl: 'https://www.linkedin.com/company/groww/jobs/',
+    locations: ['Bangalore'],
+    salaryRange: '₹12–20 LPA',
+    interviewRounds: 3,
+    description: "India's fastest-growing investment platform. 50M+ users.",
+    searchKeywords: ['frontend', 'react', 'software engineer'],
+  },
+  {
+    name: 'PhonePe',
+    category: 'Fintech',
+    careersUrl: 'https://www.phonepe.com/careers/',
+    linkedinUrl: 'https://www.linkedin.com/company/phonepe-internet/jobs/',
+    locations: ['Bangalore', 'Pune'],
+    salaryRange: '₹12–20 LPA',
+    interviewRounds: 3,
+    description: "India's #1 digital payments app. 500M+ users. Walmart-backed.",
+    searchKeywords: ['frontend', 'react', 'UI engineer', 'software engineer'],
+  },
+  {
+    name: 'Jupiter Money',
+    category: 'Fintech',
+    careersUrl: 'https://jupiter.money/careers',
+    linkedinUrl: 'https://www.linkedin.com/company/jupiter-money/jobs/',
+    locations: ['Bangalore', 'Pune'],
+    salaryRange: '₹10–16 LPA',
+    interviewRounds: 2,
+    description: 'Neo-banking fintech. Fast-moving team, strong design culture.',
+    searchKeywords: ['frontend', 'react', 'developer'],
+  },
+  {
+    name: 'Slice',
+    category: 'Fintech',
+    careersUrl: 'https://www.slice.vip/careers',
+    linkedinUrl: 'https://www.linkedin.com/company/slicepay/jobs/',
+    locations: ['Bangalore', 'Pune'],
+    salaryRange: '₹10–18 LPA',
+    interviewRounds: 3,
+    description: 'Fintech unicorn disrupting credit cards for millennials.',
+    searchKeywords: ['frontend', 'react', 'software engineer'],
+  },
+
+  // === PRODUCT / SAAS ===
+  {
+    name: 'Postman',
+    category: 'Developer Tools',
+    careersUrl: 'https://www.postman.com/company/careers/',
+    linkedinUrl: 'https://www.linkedin.com/company/postman-platform/jobs/',
+    locations: ['Bangalore'],
+    salaryRange: '₹14–22 LPA',
+    interviewRounds: 3,
+    description: "World's most popular API platform. 30M+ developers. Developer-first culture.",
+    searchKeywords: ['frontend', 'react', 'software engineer'],
+  },
+  {
+    name: 'BrowserStack',
+    category: 'Developer Tools',
+    careersUrl: 'https://www.browserstack.com/careers',
+    linkedinUrl: 'https://www.linkedin.com/company/browserstack/jobs/',
+    locations: ['Pune'],
+    salaryRange: '₹14–22 LPA',
+    interviewRounds: 3,
+    description: 'Leading browser testing platform. Product-led growth, strong eng culture.',
+    searchKeywords: ['frontend', 'react', 'UI', 'software engineer'],
+  },
+  {
+    name: 'Mindtickle',
+    category: 'SaaS',
+    careersUrl: 'https://www.mindtickle.com/company/careers/',
+    linkedinUrl: 'https://www.linkedin.com/company/mindtickle/jobs/',
+    locations: ['Pune'],
+    salaryRange: '₹12–18 LPA',
+    interviewRounds: 3,
+    description: 'Leading sales readiness platform. Well-funded SaaS unicorn.',
+    searchKeywords: ['frontend', 'react', 'engineer'],
+  },
+  {
+    name: 'Freshworks',
+    category: 'SaaS',
+    careersUrl: 'https://www.freshworks.com/company/careers/',
+    linkedinUrl: 'https://www.linkedin.com/company/freshworks-inc/jobs/',
+    locations: ['Hyderabad', 'Bangalore'],
+    salaryRange: '₹10–16 LPA',
+    interviewRounds: 3,
+    description: 'NYSE-listed global SaaS leader. Freshdesk, Freshsales, etc.',
+    searchKeywords: ['frontend', 'react', 'software engineer'],
+  },
+
+  // === E-COMMERCE / CONSUMER ===
+  {
+    name: 'Meesho',
+    category: 'E-Commerce',
+    careersUrl: 'https://meesho.io/jobs',
+    linkedinUrl: 'https://www.linkedin.com/company/meesho/jobs/',
+    locations: ['Bangalore'],
+    salaryRange: '₹12–18 LPA',
+    interviewRounds: 3,
+    description: "India's largest social commerce platform. Hyper-growth unicorn.",
+    searchKeywords: ['frontend', 'react', 'UI engineer', 'software engineer'],
+  },
+  {
+    name: 'Swiggy',
+    category: 'Consumer Tech',
+    careersUrl: 'https://www.swiggy.com/careers',
+    linkedinUrl: 'https://www.linkedin.com/company/swiggy/jobs/',
+    locations: ['Bangalore', 'Hyderabad'],
+    salaryRange: '₹14–22 LPA',
+    interviewRounds: 3,
+    description: 'Leading food-delivery & quick-commerce platform. Listed company.',
+    searchKeywords: ['frontend', 'react', 'software engineer', 'UI'],
+  },
+
+  // === ADDITIONAL HIGH-QUALITY TARGETS ===
+  {
+    name: 'Chargebee',
+    category: 'SaaS',
+    careersUrl: 'https://www.chargebee.com/company/careers/',
+    linkedinUrl: 'https://www.linkedin.com/company/chargebee/jobs/',
+    locations: ['Hyderabad'],
+    salaryRange: '₹12–20 LPA',
+    interviewRounds: 3,
+    description: 'Subscription billing platform. Strong global product company.',
+    searchKeywords: ['frontend', 'react', 'engineer'],
+  },
+  {
+    name: 'CleverTap',
+    category: 'MarTech',
+    careersUrl: 'https://www.clevertap.com/company/careers/',
+    linkedinUrl: 'https://www.linkedin.com/company/clevertap/jobs/',
+    locations: ['Pune'],
+    salaryRange: '₹10–16 LPA',
+    interviewRounds: 3,
+    description: 'AI-powered customer engagement platform. Marquee clients.',
+    searchKeywords: ['frontend', 'react', 'developer'],
+  },
+  {
+    name: 'Druva',
+    category: 'Cloud/Data',
+    careersUrl: 'https://www.druva.com/company/careers/',
+    linkedinUrl: 'https://www.linkedin.com/company/druva/jobs/',
+    locations: ['Pune'],
+    salaryRange: '₹12–20 LPA',
+    interviewRounds: 3,
+    description: 'Cloud data protection leader. Strong Pune engineering presence.',
+    searchKeywords: ['frontend', 'react', 'software engineer'],
+  },
+  {
+    name: 'Icertis',
+    category: 'Enterprise SaaS',
+    careersUrl: 'https://www.icertis.com/company/careers/',
+    linkedinUrl: 'https://www.linkedin.com/company/icertis/jobs/',
+    locations: ['Pune'],
+    salaryRange: '₹12–18 LPA',
+    interviewRounds: 3,
+    description: 'Contract intelligence platform. Enterprise unicorn from Pune.',
+    searchKeywords: ['frontend', 'react', 'UI', 'software engineer'],
+  },
+];
+
+/**
+ * Job aggregator platforms to also scan.
+ */
+export const JOB_PLATFORMS = [
+  {
+    name: 'Wellfound (AngelList)',
+    url: 'https://wellfound.com/role/frontend-developer',
+    description: 'Best for startup roles. Filter by salary + location.',
+  },
+  {
+    name: 'Cutshort',
+    url: 'https://cutshort.io/jobs/reactjs',
+    description: 'Direct startup applications with transparent salaries.',
+  },
+  {
+    name: 'Instahyre',
+    url: 'https://www.instahyre.com/job-search/',
+    description: 'AI-matched premium roles at product companies.',
+  },
+  {
+    name: 'LinkedIn Jobs',
+    url: 'https://www.linkedin.com/jobs/',
+    description: 'Use "Past 24 hours" filter + target company names.',
+  },
+];
+
+/**
+ * Generate search queries based on config.
+ * @param {object} config - Search configuration from .env
+ * @returns {string[]} Array of search query strings
+ */
+export function generateSearchQueries(config) {
+  const { targetCities, targetRoles, coreSkills, experienceYears } = config;
+  const queries = [];
+
+  // Primary queries: role + city + experience
+  for (const role of targetRoles) {
+    for (const city of targetCities) {
+      queries.push(
+        `${role} ${city} India ${experienceYears}+ years experience 2026 hiring`
+      );
+    }
+  }
+
+  // Skill-specific queries
+  for (const city of targetCities) {
+    queries.push(
+      `React Redux frontend developer ${city} startup product company hiring ${new Date().getFullYear()}`
+    );
+  }
+
+  return queries;
+}
+
+/**
+ * Filter companies based on target cities.
+ * @param {string[]} targetCities
+ * @returns {object[]} Matching companies
+ */
+export function filterCompaniesByCities(targetCities) {
+  return TARGET_COMPANIES.filter((company) =>
+    company.locations.some((loc) =>
+      targetCities.some(
+        (city) => loc.toLowerCase().includes(city.toLowerCase())
+      )
+    )
+  );
+}
+
+/**
+ * Build the HTML for a single company card in the email.
+ * @param {object} company
+ * @param {number} index
+ * @returns {string} HTML string
+ */
+export function buildCompanyCard(company, index) {
+  const locationBadges = company.locations
+    .map(
+      (loc) =>
+        `<span style="display:inline-block;background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:12px;font-size:12px;margin-right:4px;">${loc}</span>`
+    )
+    .join('');
+
+  const categoryColor = {
+    Fintech: '#ff6f00',
+    'Developer Tools': '#1565c0',
+    SaaS: '#6a1b9a',
+    'E-Commerce': '#c62828',
+    'Consumer Tech': '#00838f',
+    MarTech: '#4527a0',
+    'Cloud/Data': '#0277bd',
+    'Enterprise SaaS': '#283593',
+  };
+
+  return `
+    <div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h3 style="margin:0;color:#1a1a1a;font-size:18px;">
+          ${index}. ${company.name}
+          <span style="display:inline-block;background:${categoryColor[company.category] || '#424242'};color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;margin-left:8px;vertical-align:middle;">${company.category}</span>
+        </h3>
+        <span style="color:#2e7d32;font-weight:600;font-size:14px;">${company.salaryRange}</span>
+      </div>
+      <p style="margin:4px 0 12px;color:#666;font-size:13px;">${company.description}</p>
+      <div style="margin-bottom:12px;">
+        ${locationBadges}
+        <span style="display:inline-block;background:#e3f2fd;color:#1565c0;padding:2px 8px;border-radius:12px;font-size:12px;margin-left:4px;">
+          ${company.interviewRounds} rounds
+        </span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <a href="${company.careersUrl}" style="display:inline-block;background:#1a73e8;color:#fff;padding:8px 16px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:500;">🔗 Careers Page</a>
+        <a href="${company.linkedinUrl}" style="display:inline-block;background:#0a66c2;color:#fff;padding:8px 16px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:500;">💼 LinkedIn Jobs</a>
+      </div>
+    </div>
+  `;
+}

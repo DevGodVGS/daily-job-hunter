@@ -1,0 +1,41 @@
+name: 🎯 Daily Job Hunter
+
+on:
+  # Runs every day at 9:00 AM IST (3:30 AM UTC)
+  schedule:
+    - cron: '30 3 * * *'
+
+  # Allow manual trigger from GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  job-hunt:
+    name: 🔍 Search & Email Jobs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🎯 Run Job Hunter Agent
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          TARGET_CITIES: 'Hyderabad,Bangalore,Pune'
+          TARGET_ROLES: 'Frontend Developer,React Developer,Software Engineer,Full-Stack Developer,UI Engineer'
+          CORE_SKILLS: 'React,Redux,JavaScript,NodeJS,HTML5,CSS3,REST APIs'
+          MIN_SALARY_LPA: '10'
+          MAX_SALARY_LPA: '20'
+          EXPERIENCE_YEARS: '2'
+        run: node index.js
