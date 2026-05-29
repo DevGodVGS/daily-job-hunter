@@ -37,6 +37,7 @@ export async function calculateATSScore(title, description, geminiKey) {
   const titleLower = (title || '').toLowerCase();
   const descLower = (description || '').toLowerCase();
 
+  // If Gemini key is missing completely, use the local fallback (which bypasses filters in search)
   if (!geminiKey || geminiKey === 'your_gemini_api_key_here') {
     return calculateATSScoreFallback(title, description);
   }
@@ -120,11 +121,18 @@ Return your response strictly in the following JSON format:
 
     return {
       score: parseInt(cleanJson.score || '0', 10),
-      matchedSkills: cleanJson.matchedSkills || []
+      matchedSkills: cleanJson.matchedSkills || [],
+      isError: false
     };
   } catch (error) {
-    console.warn(`   ⚠️ Gemini ATS scoring error (${error.message}). Falling back to local scoring.`);
-    return calculateATSScoreFallback(title, description);
+    console.warn(`   ⚠️ Gemini ATS scoring error (${error.message}). Including job without AI filter.`);
+    // Get the local keyword fallback score for display, but guarantee it passes the filter (>85%)
+    const fallback = calculateATSScoreFallback(title, description);
+    return {
+      score: Math.max(85, fallback.score), // Force pass so it is not skipped
+      matchedSkills: [...fallback.matchedSkills, 'AI Evaluation Error (Sent Anyway)'],
+      isError: true
+    };
   }
 }
 
@@ -307,7 +315,7 @@ export async function fetchJobsFromJSearch(config) {
     }
 
     console.log(`   [${i + 1}/${rawJobs.length}] Parsing job: "${job.job_title}" at "${job.employer_name}"`);
-    const { score, matchedSkills } = await calculateATSScore(
+    const { score, matchedSkills, isError } = await calculateATSScore(
       job.job_title,
       job.job_description,
       config.geminiApiKey
@@ -330,7 +338,8 @@ export async function fetchJobsFromJSearch(config) {
         ? job.job_description.substring(0, 250).trim() + '...'
         : 'No description details provided.',
       atsScore: score,
-      matchedSkills
+      matchedSkills,
+      isError: isError || false
     });
   }
 
@@ -341,7 +350,8 @@ export async function fetchJobsFromJSearch(config) {
       (kw) => titleLower.includes(kw)
     );
     
-    const isHighlyRelevant = isGeminiMissing ? true : (job.atsScore >= 85);
+    // Pass if Gemini is missing, OR if the job score is >= 85%, OR if there was an evaluation error
+    const isHighlyRelevant = isGeminiMissing || job.isError || (job.atsScore >= 85);
     return isDevRole && isHighlyRelevant;
   });
 
@@ -353,15 +363,16 @@ export async function fetchJobsFromJSearch(config) {
 }
 
 /**
- * Build the HTML for a single job card in a clean, professional corporate format.
- * @param {object} job
- * @param {number} index
- * @returns {string} HTML string
+ * Build the HTML for a single job card.
  */
 export function buildJobCard(job, index) {
   const matchedSkillsText = job.matchedSkills.length > 0
     ? job.matchedSkills.join(', ')
     : 'React, Redux, JavaScript';
+
+  const scoreDisplay = job.isError 
+    ? `<span style="font-weight:700;font-size:12px;color:#b45309;">⚠️ Error (Sent)</span>`
+    : `<span style="font-weight:700;font-size:14px;color:#0d9488;">🎯 ${job.atsScore}% Match</span>`;
 
   return `
     <!-- JOB CARD -->
@@ -382,9 +393,9 @@ export function buildJobCard(job, index) {
             </div>
           </td>
           <!-- ATS Score & Salary -->
-          <td style="vertical-align:top;text-align:right;width:120px;white-space:nowrap;">
-            <div style="font-weight:700;font-size:14px;color:#0d9488;">
-              ${job.atsScore}% Match
+          <td style="vertical-align:top;text-align:right;width:130px;white-space:nowrap;">
+            <div style="margin-bottom:2px;">
+              ${scoreDisplay}
             </div>
             <div style="color:#374151;font-size:12px;margin-top:2px;font-weight:500;">
               ${job.salaryRange}

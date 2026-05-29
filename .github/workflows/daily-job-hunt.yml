@@ -39,6 +39,10 @@ jobs:
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_FROM: ${{ secrets.TWILIO_FROM }}
+          TWILIO_TO: ${{ secrets.TWILIO_TO }}
           TARGET_CITIES: 'Hyderabad,Bangalore,Pune'
           TARGET_ROLES: 'Frontend Developer,React Developer,Software Engineer,Full-Stack Developer,UI Engineer'
           CORE_SKILLS: 'React,Redux,JavaScript,NodeJS,HTML5,CSS3,REST APIs'

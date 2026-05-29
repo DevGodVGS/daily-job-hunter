@@ -1,6 +1,6 @@
-# 🎯 Daily Job Hunter Agent (Dynamic Search & AI ATS)
+# 🎯 Daily Job Hunter Agent (Dynamic Search, AI ATS & WhatsApp)
 
-A Node.js-powered agent that queries the JSearch API (aggregates LinkedIn, Indeed, Glassdoor, Naukri, and more) to scan the entire internet for React/Frontend developer roles in India posted in the **last 24 hours**, evaluates them semantically using Google Gemini AI (acting as an ATS evaluator), and sends a beautifully formatted email report every morning at 9 AM.
+A Node.js-powered agent that queries the JSearch API (aggregates LinkedIn, Indeed, Glassdoor, Naukri, and more) to scan the entire internet for React/Frontend developer roles in India posted in the **last 24 hours**, evaluates them semantically using Google Gemini AI (acting as an ATS evaluator), and sends a beautifully formatted email report and a **WhatsApp summary alert** directly to your phone every morning at 9 AM.
 
 ## ⚡ Quick Start
 
@@ -28,6 +28,11 @@ Edit `.env` and fill in the following:
    - Go to [Google AI Studio](https://aistudio.google.com/)
    - Click "Create API Key"
    - Copy the key and paste it into `GEMINI_API_KEY`
+4. **WhatsApp Twilio Credentials** (Free Sandbox):
+   - Create a free account at [Twilio](https://www.twilio.com)
+   - Copy your **Account SID** and **Auth Token** into `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN`.
+   - Setup the WhatsApp Sandbox: send the join code (e.g. `join <sandbox-code-word>`) to `+14155238886`.
+   - Put your sandbox details into `TWILIO_FROM` (`whatsapp:+14155238886`) and `TWILIO_TO` (`whatsapp:+91XXXXXXXXXX`).
 
 ### 3. Test run (one-shot)
 ```bash
@@ -46,6 +51,7 @@ daily-job-hunter/
 ├── index.js           # Main entry point & orchestrator
 ├── search-engine.js   # Dynamic API search and Gemini ATS parser
 ├── email-builder.js   # HTML email builder & sender
+├── whatsapp-sender.js # WhatsApp notification builder & sender (Twilio)
 ├── scheduler.js       # Cron scheduler (9 AM IST daily)
 ├── .env.example       # Environment config template
 ├── package.json       # Dependencies & scripts
@@ -63,6 +69,10 @@ All settings are in `.env`:
 | `EMAIL_TO` | Same as USER | Recipient email |
 | `RAPIDAPI_KEY` | — | JSearch API Key |
 | `GEMINI_API_KEY` | — | Google Gemini API Key |
+| `TWILIO_ACCOUNT_SID`| — | Twilio Account SID |
+| `TWILIO_AUTH_TOKEN` | — | Twilio Auth Token |
+| `TWILIO_FROM` | `whatsapp:+14155238886` | Twilio Sandbox Number |
+| `TWILIO_TO` | — | Target WhatsApp (with `whatsapp:+country_code`) |
 | `TARGET_CITIES` | `Hyderabad,Bangalore,Pune` | Cities to scan |
 | `TARGET_ROLES` | `Frontend Developer,...` | Role titles |
 | `CORE_SKILLS` | `React,Redux,...` | Skills to match |
@@ -93,9 +103,9 @@ pm2 logs job-hunter
 pm2 stop job-hunter
 ```
 
-## 📧 Email Preview
+## 📧 Notification Formats
 
-The daily email includes:
+### Email Preview
 - 🔥 Dynamic, fresh job postings from the last 24 hours across the entire web
 - 🎯 Semantic ATS Match Percentage calculated using Google Gemini AI
 - 💡 List of matching skills extracted from your resume
@@ -103,6 +113,11 @@ The daily email includes:
 - 💰 Salary estimate (if specified)
 - 📍 Location details
 - 💡 Random tip of the day
+
+### WhatsApp Preview
+- 🎯 Clean markdown list of top 5 highest-matching jobs delivered directly to your WhatsApp chat.
+- 🏢 Title, Company, Match Score, Salary, and direct Apply link.
+- 📧 Quick summary with a prompt to check your email inbox for the full detailed scan.
 
 ## License
 

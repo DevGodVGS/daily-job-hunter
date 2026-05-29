@@ -7,12 +7,14 @@
  *  2. Search all platforms using JSearch API
  *  3. Score matches semantically with Gemini API
  *  4. Build HTML email and send via Gmail
+ *  5. Send WhatsApp notifications via Twilio
  * ============================================
  */
 
 import dotenv from 'dotenv';
 import { fetchJobsFromJSearch } from './search-engine.js';
 import { buildEmailHTML, createTransport, sendEmail } from './email-builder.js';
+import { sendWhatsAppSummary } from './whatsapp-sender.js';
 
 // Load environment variables
 dotenv.config();
@@ -27,7 +29,11 @@ function loadConfig() {
     emailPass: process.env.EMAIL_PASS,
     emailTo: process.env.EMAIL_TO || process.env.EMAIL_USER,
     rapidApiKey: process.env.RAPIDAPI_KEY,
-    geminiApiKey:  process.env.GEMINI_API_KEY,
+    geminiApiKey: process.env.GEMINI_API_KEY,
+    twilioAccountSid: process.env.TWILIO_ACCOUNT_SID,
+    twilioAuthToken: process.env.TWILIO_AUTH_TOKEN,
+    twilioFrom: process.env.TWILIO_FROM,
+    twilioTo: process.env.TWILIO_TO,
     targetCities: (process.env.TARGET_CITIES || 'Hyderabad,Bangalore,Pune').split(',').map((s) => s.trim()),
     targetRoles: (process.env.TARGET_ROLES || 'Frontend Developer,React Developer,Software Engineer,Full-Stack Developer,UI Engineer').split(',').map((s) => s.trim()),
     coreSkills: (process.env.CORE_SKILLS || 'React,Redux,JavaScript').split(',').map((s) => s.trim()),
@@ -45,12 +51,12 @@ function loadConfig() {
     process.exit(1);
   }
 
-  // Check if JSearch API Key is set
+  // Check JSearch API Key
   if (!config.rapidApiKey) {
     console.warn('⚠️  WARNING: RAPIDAPI_KEY is not configured in your .env file.');
   }
 
-  // Check if Gemini API Key is set
+  // Check Gemini API Key
   if (!config.geminiApiKey) {
     console.warn('⚠️  WARNING: GEMINI_API_KEY is not configured in your .env file.');
     console.warn('   Will fall back to static keyword matching for ATS scoring.');
@@ -130,6 +136,7 @@ export async function runJobHunt(overrideConfig) {
   console.log('   HTML email built successfully.');
 
   // Step 3: Send email
+  let emailSent = false;
   if (isTest && (!config.emailUser || config.emailPass === 'your_gmail_app_password_here')) {
     console.log('');
     console.log('⚠️  TEST MODE: Skipping email send (no valid credentials).');
@@ -145,6 +152,7 @@ export async function runJobHunt(overrideConfig) {
       const transporter = createTransport(config);
       await sendEmail(transporter, html, config);
       console.log(`   ✅ Email sent to: ${config.emailTo}`);
+      emailSent = true;
     } catch (error) {
       console.error(`   ❌ Failed to send email: ${error.message}`);
       if (error.message.includes('Invalid login')) {
@@ -153,6 +161,18 @@ export async function runJobHunt(overrideConfig) {
       }
       throw error;
     }
+  }
+
+  // Step 4: Send WhatsApp
+  if (!isTest || emailSent) {
+    console.log('📨 Step 4: Sending WhatsApp notifications...');
+    try {
+      await sendWhatsAppSummary(jobs, config);
+    } catch (error) {
+      console.error(`   ❌ Failed to send WhatsApp notification: ${error.message}`);
+    }
+  } else if (isTest) {
+    console.log('⚠️  TEST MODE: Skipping WhatsApp send (dry run).');
   }
 
   console.log('');
