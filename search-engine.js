@@ -44,14 +44,21 @@ export async function calculateATSScore(title, description, geminiKey) {
 
   // If Gemini key is missing completely, use the local fallback (which bypasses filters in search)
   if (!geminiKey || geminiKey === 'your_gemini_api_key_here') {
-    return calculateATSScoreFallback(title, description);
+    const fallback = calculateATSScoreFallback(title, description);
+    return {
+      ...fallback,
+      reason: 'Gemini API key missing. Bypassed AI scoring.',
+      linkedinOutreach: '',
+      coldEmail: '',
+      recruiterInfo: '',
+      isError: false
+    };
   }
 
   try {
     const prompt = `
-You are an expert corporate Applicant Tracking System (ATS) and recruiter parser.
+You are an expert corporate Applicant Tracking System (ATS), technical recruiter, and copywriting assistant.
 Evaluate the alignment between the target candidate resume and the job description below.
-Calculate an honest match score from 0 to 100 based on core skills, target experience level, and key projects alignment.
 Identify which core skills from the candidate's resume are explicitly required in the job description.
 
 Candidate Resume Context:
@@ -61,10 +68,14 @@ Job Opening:
 Title: ${title}
 Description: ${description}
 
-Return your response strictly in the following JSON format:
+Return your response strictly in the following JSON format (no markdown blocks, no trailing comments):
 {
   "score": <number from 0 to 100 representing match percentage>,
-  "matchedSkills": [<array of strings matching skills from candidate skills: e.g. React, Redux, NodeJS, SSO, etc.>]
+  "matchedSkills": [<array of strings matching skills from candidate skills: e.g. React, Redux, NodeJS, SSO, etc.>],
+  "reason": "<1-sentence personalized verdict explaining why this job matches the candidate's resume/preferences, highlighting key mutual requirements>",
+  "linkedinOutreach": "<A short, professional 1-paragraph LinkedIn connection outreach message (max 300 characters) tailored to this job and referencing Vishwa's relevant achievements>",
+  "coldEmail": "<A highly engaging, concise cold email template including a professional Subject line and a short Body (max 3 paragraphs) highlighting Vishwa's experience. Use [Recruiter Name] as placeholder if unknown>",
+  "recruiterInfo": "<A string containing recruiter name/email/phone if explicitly mentioned in the job description, otherwise leave as empty string ''>"
 }
 `;
 
@@ -134,6 +145,10 @@ Return your response strictly in the following JSON format:
     return {
       score: parsedScore,
       matchedSkills: cleanJson.matchedSkills || [],
+      reason: cleanJson.reason || 'Matches your core developer profile.',
+      linkedinOutreach: cleanJson.linkedinOutreach || '',
+      coldEmail: cleanJson.coldEmail || '',
+      recruiterInfo: cleanJson.recruiterInfo || '',
       isError: false
     };
   } catch (error) {
@@ -143,6 +158,10 @@ Return your response strictly in the following JSON format:
     return {
       score: Math.max(85, fallback.score), // Force pass so it is not skipped
       matchedSkills: [...fallback.matchedSkills, 'AI Evaluation Error (Sent Anyway)'],
+      reason: 'AI match verdict is unavailable due to scoring error.',
+      linkedinOutreach: 'Outreach template unavailable.',
+      coldEmail: 'Cold email template unavailable.',
+      recruiterInfo: '',
       isError: true
     };
   }
@@ -331,7 +350,7 @@ export async function fetchJobsFromJSearch(config) {
     }
 
     console.log(`   [${i + 1}/${rawJobs.length}] Parsing job: "${job.job_title}" at "${job.employer_name}"`);
-    const { score, matchedSkills, isError } = await calculateATSScore(
+    const { score, matchedSkills, reason, linkedinOutreach, coldEmail, recruiterInfo, isError } = await calculateATSScore(
       job.job_title,
       job.job_description,
       config.geminiApiKey
@@ -355,6 +374,10 @@ export async function fetchJobsFromJSearch(config) {
         : 'No description details provided.',
       atsScore: score,
       matchedSkills,
+      reason,
+      linkedinOutreach,
+      coldEmail,
+      recruiterInfo,
       isError: isError || false
     });
   }
@@ -395,6 +418,38 @@ export function buildJobCard(job, index) {
     ? `<span style="font-weight:700;font-size:12px;color:#b45309;">⚠️ Error (Sent)</span>`
     : `<span style="font-weight:700;font-size:14px;color:#0d9488;">🎯 ${job.atsScore}% Match</span>`;
 
+  const hrSearchUrl = `https://www.linkedin.com/search/results/people/?keywords=HR%20Recruiter%20${encodeURIComponent(job.company)}`;
+  const recruiterSection = job.recruiterInfo
+    ? `<div style="margin-top:10px;font-size:12px;color:#1e3a8a;background:#eff6ff;padding:8px 12px;border-radius:4px;border:1px solid #bfdbfe;">
+         <strong>📞 Recruiter Contact:</strong> ${job.recruiterInfo}
+       </div>`
+    : `<div style="margin-top:10px;font-size:12px;color:#374151;background:#f9fafb;padding:8px 12px;border-radius:4px;border:1px solid #e5e7eb;">
+         <strong>🔍 Find Recruiters:</strong> <a href="${hrSearchUrl}" target="_blank" style="color:#2563eb;font-weight:600;text-decoration:underline;">Search "${job.company} HR Recruiter" on LinkedIn</a>
+       </div>`;
+
+  let outreachSection = '';
+  if (job.atsScore >= 90 && !job.isError && job.linkedinOutreach && job.coldEmail) {
+    outreachSection = `
+      <div style="margin-top:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px;">
+        <div style="color:#0f172a;font-size:13px;font-weight:700;margin-bottom:8px;border-bottom:1px solid #e2e8f0;padding-bottom:6px;">
+          🚀 Outreach Copilot (High Match)
+        </div>
+        
+        <!-- LinkedIn Connect -->
+        <div style="margin-bottom:10px;">
+          <div style="color:#475569;font-size:11px;font-weight:600;margin-bottom:4px;">💬 LinkedIn Connection Message (Max 300 chars):</div>
+          <code style="display:block;background:#ffffff;border:1px solid #cbd5e1;border-radius:4px;padding:8px;font-family:monospace;font-size:11px;color:#334155;word-break:break-word;white-space:pre-wrap;">${job.linkedinOutreach}</code>
+        </div>
+        
+        <!-- Cold Email -->
+        <div>
+          <div style="color:#475569;font-size:11px;font-weight:600;margin-bottom:4px;">📧 Short Cold Email:</div>
+          <code style="display:block;background:#ffffff;border:1px solid #cbd5e1;border-radius:4px;padding:8px;font-family:monospace;font-size:11px;color:#334155;word-break:break-word;white-space:pre-wrap;">${job.coldEmail}</code>
+        </div>
+      </div>
+    `;
+  }
+
   return `
     <!-- JOB CARD -->
     <div style="background:#ffffff;border:1px solid #d1d5db;border-radius:6px;padding:16px;margin-bottom:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
@@ -430,8 +485,19 @@ export function buildJobCard(job, index) {
         ${job.description}
       </p>
 
+      <!-- AI Verdict Banner -->
+      <div style="background:#f0fdfa;border-left:3px solid #0d9488;padding:8px 12px;margin:10px 0;font-size:12px;color:#0f766e;border-radius:0 4px 4px 0;line-height:1.4;">
+        <strong>💡 AI Verdict:</strong> ${job.reason || 'No verdict generated.'}
+      </div>
+
+      <!-- Recruiter Section -->
+      ${recruiterSection}
+
+      <!-- Outreach Templates -->
+      ${outreachSection}
+
       <!-- Matched Skills -->
-      <div style="margin-bottom:12px;color:#4b5563;font-size:11px;line-height:1.4;">
+      <div style="margin-top:12px;margin-bottom:12px;color:#4b5563;font-size:11px;line-height:1.4;">
         <strong style="color:#1f2937;">Matched Skills:</strong> <span style="font-style:italic;">${matchedSkillsText}</span>
       </div>
 
