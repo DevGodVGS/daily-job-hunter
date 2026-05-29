@@ -37,6 +37,9 @@ export async function sendWhatsAppSummary(jobs, config) {
   topJobs.forEach((job, index) => {
     text += `*${index + 1}. ${job.title}*\n`;
     text += `🏢 ${job.company}  |  🎯 ${job.atsScore}% Match\n`;
+    if (job.reason) {
+      text += `💡 _${job.reason}_\n`;
+    }
     text += `💰 ${job.salaryRange}  |  📍 ${job.location.split(',')[0]}\n`;
     text += `🔗 Link: ${job.applyLink}\n\n`;
   });
