@@ -353,53 +353,70 @@ export async function fetchJobsFromJSearch(config) {
 }
 
 /**
- * Build the HTML for a single job card.
+ * Build the HTML for a single job card in a clean, professional corporate format.
+ * @param {object} job
+ * @param {number} index
+ * @returns {string} HTML string
  */
 export function buildJobCard(job, index) {
-  const skillsList = job.matchedSkills
-    .map(skill => `<span style="display:inline-block;background:#efebe9;color:#5d4037;padding:2px 6px;border-radius:4px;font-size:10px;margin-right:4px;margin-bottom:4px;font-weight:600;">${skill}</span>`)
-    .join('');
+  const matchedSkillsText = job.matchedSkills.length > 0
+    ? job.matchedSkills.join(', ')
+    : 'React, Redux, JavaScript';
 
   return `
-    <div style="background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:12px;">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <img src="${job.logo}" alt="${job.company}" style="width:40px;height:40px;border-radius:6px;object-fit:contain;background:#f9f9f9;border:1px solid #eee;" onerror="this.src='https://via.placeholder.com/40/1a73e8/ffffff?text=${encodeURIComponent(job.company[0])}'" />
-          <div>
-            <h3 style="margin:0;color:#1a1a1a;font-size:16px;font-weight:700;">
+    <!-- JOB CARD -->
+    <div style="background:#ffffff;border:1px solid #d1d5db;border-radius:6px;padding:16px;margin-bottom:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <!-- Company Logo -->
+          <td style="vertical-align:top;width:40px;padding-right:12px;">
+            <img src="${job.logo}" alt="${job.company}" style="width:40px;height:40px;border-radius:4px;object-fit:contain;background:#f9fafb;border:1px solid #e5e7eb;" onerror="this.src='https://via.placeholder.com/40/374151/ffffff?text=${encodeURIComponent(job.company[0])}'" />
+          </td>
+          <!-- Title & Company -->
+          <td style="vertical-align:top;">
+            <h3 style="margin:0;color:#111827;font-size:15px;font-weight:700;line-height:1.4;">
               ${index}. ${job.title}
             </h3>
-            <div style="color:#666;font-size:13px;font-weight:500;margin-top:2px;">
+            <div style="color:#4b5563;font-size:13px;font-weight:600;margin-top:2px;">
               ${job.company}
             </div>
-          </div>
-        </div>
-        <div style="text-align:right;">
-          <span style="display:inline-block;background:#e8f5e9;color:#2e7d32;font-weight:700;font-size:13px;padding:4px 8px;border-radius:8px;margin-bottom:4px;border:1px solid #c8e6c9;">
-            🎯 ${job.atsScore}% Match
-          </span>
-          <div style="color:#2e7d32;font-size:11px;font-weight:600;">${job.salaryRange}</div>
-        </div>
-      </div>
-      <p style="margin:8px 0 12px;color:#555;font-size:13px;line-height:1.5;">${job.description}</p>
-      
-      <div style="margin-bottom:10px;display:flex;flex-wrap:wrap;">
-        ${skillsList}
+          </td>
+          <!-- ATS Score & Salary -->
+          <td style="vertical-align:top;text-align:right;width:120px;white-space:nowrap;">
+            <div style="font-weight:700;font-size:14px;color:#0d9488;">
+              ${job.atsScore}% Match
+            </div>
+            <div style="color:#374151;font-size:12px;margin-top:2px;font-weight:500;">
+              ${job.salaryRange}
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Job Description snippet -->
+      <p style="margin:12px 0 10px;color:#374151;font-size:13px;line-height:1.5;">
+        ${job.description}
+      </p>
+
+      <!-- Matched Skills -->
+      <div style="margin-bottom:12px;color:#4b5563;font-size:11px;line-height:1.4;">
+        <strong style="color:#1f2937;">Matched Skills:</strong> <span style="font-style:italic;">${matchedSkillsText}</span>
       </div>
 
-      <div style="margin-bottom:14px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
-        <span style="display:inline-block;background:#f5f5f5;color:#444;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:500;">
-          📍 ${job.location}
-        </span>
-        <span style="display:inline-block;background:#e3f2fd;color:#0d47a1;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:500;">
-          📢 via ${job.publisher}
-        </span>
-        <span style="display:inline-block;background:#f3e5f5;color:#4a148c;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:500;">
-          🕒 ${job.postedTime}
-        </span>
-      </div>
-      <div>
-        <a href="${job.applyLink}" style="display:inline-block;background:#1a73e8;color:#fff;padding:8px 18px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;text-align:center;box-shadow:0 2px 4px rgba(26,115,232,0.2);">🔗 Apply Now</a>
+      <!-- Divider -->
+      <div style="border-top:1px solid #e5e7eb;margin-top:12px;padding-top:10px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <!-- Details -->
+            <td style="color:#6b7280;font-size:11px;vertical-align:middle;">
+              📍 ${job.location} &nbsp;&bull;&nbsp; 🌐 via ${job.publisher} &nbsp;&bull;&nbsp; 🕒 ${job.postedTime}
+            </td>
+            <!-- Action Button -->
+            <td style="text-align:right;width:120px;vertical-align:middle;">
+              <a href="${job.applyLink}" style="display:inline-block;background:#2563eb;color:#ffffff;padding:6px 14px;border-radius:4px;text-decoration:none;font-size:12px;font-weight:700;line-height:1;text-align:center;">Apply Now &rarr;</a>
+            </td>
+          </tr>
+        </table>
       </div>
     </div>
   `;
